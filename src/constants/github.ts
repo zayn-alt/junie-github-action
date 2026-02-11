@@ -124,7 +124,7 @@ Your task is to analyze CI failures and fix them. Follow these steps:
    - Make the necessary changes to fix the CI failures.
    - Keep changes minimal and focused on fixing the specific failures.
    - Follow the existing code style and conventions in the repository.
-   - Do NOT make unrelated changes or "improvements" beyond what is needed to fix the CI.
+   - Do NOT make unrelated changes or "improvements" beyond what is needed to fix the CI. 
 
 5. Validation
    - Ensure your changes compile/build successfully.
