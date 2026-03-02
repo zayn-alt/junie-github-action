@@ -89,7 +89,7 @@ jobs:
 
       - name: Run Junie
         id: junie
-        uses: JetBrains/junie-github-action@v0
+        uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
 ```
@@ -163,7 +163,7 @@ junie-args: --model=claude-opus-4-5
 
 **Example configuration**:
 ```yaml
-- uses: JetBrains/junie-github-action@v0
+- uses: JetBrains/junie-github-action@v1
   with:
     junie_api_key: ${{ secrets.JUNIE_API_KEY }}
     allowed_mcp_servers: "mcp_github_checks_server"
@@ -216,7 +216,7 @@ For detailed setup instructions, see the [Jira Integration Guide](docs/JIRA_INTE
 **Example usage:**
 
 ```yaml
-- uses: JetBrains/junie-github-action@v0
+- uses: JetBrains/junie-github-action@v1
   id: junie
   with:
     junie_api_key: ${{ secrets.JUNIE_API_KEY }}
@@ -272,7 +272,7 @@ When using the default `github.token` (automatically provided by GitHub Actions)
 
 For example, if you use the default token:
 ```yaml
-- uses: JetBrains/junie-github-action@v0
+- uses: JetBrains/junie-github-action@v1
   with:
     junie_api_key: ${{ secrets.JUNIE_API_KEY }}
     # No custom_github_token specified - uses default github.token
@@ -302,7 +302,7 @@ refusing to allow a GitHub App to create or update workflow without `workflows` 
 To allow Junie's changes to trigger other workflows, provide a custom token:
 
 ```yaml
-- uses: JetBrains/junie-github-action@v0
+- uses: JetBrains/junie-github-action@v1
   with:
     junie_api_key: ${{ secrets.JUNIE_API_KEY }}
     custom_github_token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
@@ -355,7 +355,7 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       # Use the generated token
-      - uses: JetBrains/junie-github-action@v0
+      - uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
           custom_github_token: ${{ steps.app-token.outputs.token }}
