@@ -43,7 +43,7 @@ A powerful GitHub Action that integrates [Junie](https://www.jetbrains.com/junie
 
 ### Prerequisites
 
-1. **Junie API Key**: Obtain from [JetBrains Junie](https://junie.labs.jb.gg/)
+1. **Junie API Key**: Obtain from [JetBrains Junie](https://junie.jetbrains.com/)
 2. **Repository Permissions**: Admin access to configure secrets and workflows
 
 ### Basic Setup
@@ -89,7 +89,7 @@ jobs:
 
       - name: Run Junie
         id: junie
-        uses: JetBrains/junie-github-action@v0
+        uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
 ```
@@ -112,7 +112,7 @@ jobs:
 
 📚 **Looking for practical examples?** Check out the [Cookbook](COOKBOOK.md) for real-world recipes including:
 
-- **Automated Code Review** - Structured PR reviews for security, performance, and code quality
+- **Automated Code Review** - Structured PR reviews for code quality and improvements
 - **Sync Code → Documentation** - Auto-update docs when code changes
 - **Fix Failing CI Tests** - Diagnose and fix test failures automatically
 - **Security Audit for Secrets** - Scan commits for accidentally committed credentials
@@ -143,9 +143,9 @@ Each recipe includes complete workflows, prompts, and configuration examples you
 
 | Input | Description | Default |
 |-------|-------------|---------|
-| `prompt` | Custom instructions for Junie. Special values: `code-review` for structured PR reviews, `fix-ci` for CI failure analysis, `minor-fix` for quick PR adjustments. See [Cookbook](COOKBOOK.md) for examples. | - |
-| `junie_version` | Junie CLI version to install | `802.5.0` |
-| `model` | Model to use for the primary agent. Available: `claude-sonnet-4-6`, `claude-opus-4-6`, `gpt-5-2025-08-07`, `gpt-5.2-codex`, `gpt-5.2-2025-12-11`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `grok-4-1-fast-reasoning`, `claude-opus-4-5-20251101` | - |
+| `prompt` | Custom instructions for Junie. Special values: `code-review` for PR reviews, `fix-ci` for CI failure analysis, `minor-fix` for quick PR adjustments. See [Cookbook](COOKBOOK.md) for examples. | - |
+| `junie_version` | Junie CLI version to install | `888.57` |
+| `model` | Model to use for the primary agent. Available: `sonnet`, `opus`, `gpt`, `gpt-codex`, `gemini-pro`, `gemini-flash`, `grok` | - |
 | `junie_work_dir` | Working directory for Junie files | `/tmp/junie-work` |
 | `junie_guidelines_filename` | Filename of the guidelines file (should be in `<project-root>/.junie` dir) | `guidelines.md` |
 | `allowed_mcp_servers` | Comma-separated list of MCP servers to use (e.g., `mcp_github_checks_server`). Note: inline comment server is automatically enabled for PRs. | - |
@@ -154,7 +154,7 @@ Each recipe includes complete workflows, prompts, and configuration examples you
 
 ```markdown
 @junie-agent fix the bug
-junie-args: --model=claude-opus-4-5
+junie-args: --model=opus
 ```
 
 **Available MCP Servers**:
@@ -163,11 +163,11 @@ junie-args: --model=claude-opus-4-5
 
 **Example configuration**:
 ```yaml
-- uses: JetBrains/junie-github-action@v0
+- uses: JetBrains/junie-github-action@v1
   with:
     junie_api_key: ${{ secrets.JUNIE_API_KEY }}
     allowed_mcp_servers: "mcp_github_checks_server"
-    model: "claude-opus-4-5-20251101"  # Optional: specify which model to use
+    model: "opus"  # Optional: specify which model to use
 ```
 
 **Note**: The `mcp_github_inline_comment_server` is automatically enabled for `pull_request` events - no manual configuration needed.
@@ -216,7 +216,7 @@ For detailed setup instructions, see the [Jira Integration Guide](docs/JIRA_INTE
 **Example usage:**
 
 ```yaml
-- uses: JetBrains/junie-github-action@v0
+- uses: JetBrains/junie-github-action@v1
   id: junie
   with:
     junie_api_key: ${{ secrets.JUNIE_API_KEY }}
@@ -272,7 +272,7 @@ When using the default `github.token` (automatically provided by GitHub Actions)
 
 For example, if you use the default token:
 ```yaml
-- uses: JetBrains/junie-github-action@v0
+- uses: JetBrains/junie-github-action@v1
   with:
     junie_api_key: ${{ secrets.JUNIE_API_KEY }}
     # No custom_github_token specified - uses default github.token
@@ -302,7 +302,7 @@ refusing to allow a GitHub App to create or update workflow without `workflows` 
 To allow Junie's changes to trigger other workflows, provide a custom token:
 
 ```yaml
-- uses: JetBrains/junie-github-action@v0
+- uses: JetBrains/junie-github-action@v1
   with:
     junie_api_key: ${{ secrets.JUNIE_API_KEY }}
     custom_github_token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
@@ -355,7 +355,7 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       # Use the generated token
-      - uses: JetBrains/junie-github-action@v0
+      - uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
           custom_github_token: ${{ steps.app-token.outputs.token }}

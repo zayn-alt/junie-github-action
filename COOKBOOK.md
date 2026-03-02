@@ -6,7 +6,7 @@ Real-world recipes for automating development workflows with Junie. Each recipe 
 
 Before using any recipe, add your Junie API key to repository secrets:
 1. Go to **Settings → Secrets and variables → Actions**
-2. Create `JUNIE_API_KEY` with your key from [junie.labs.jb.gg](https://junie.labs.jb.gg/)
+2. Create `JUNIE_API_KEY` with your key from [junie.jetbrains.com](https://junie.jetbrains.com/)
 
 ---
 
@@ -51,7 +51,7 @@ jobs:
 
       - name: Run Junie
         id: junie
-        uses: JetBrains/junie-github-action@v0
+        uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
           use_single_comment: true
@@ -88,7 +88,7 @@ jobs:
 
 ### Option A: Use Built-in Code Review (Recommended)
 
-Use the built-in `code-review` prompt for a structured, opinionated review focused on repository style, avoiding overcomplications, and catching obvious issues:
+Use the built-in `code-review` prompt for a structured PR review:
 
 <details>
 <summary>View complete workflow</summary>
@@ -114,7 +114,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - uses: JetBrains/junie-github-action@v0
+      - uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
           use_single_comment: "true"
@@ -123,10 +123,7 @@ jobs:
 
 </details>
 
-The built-in review focuses on:
-- **Repository style adherence** - naming, formatting, package structure
-- **Avoiding overcomplications** - premature abstractions, unnecessary indirection
-- **Security, performance, error handling** - only for obviously applicable cases
+The built-in review provides structured feedback directly on the PR.
 
 ### Option B: Custom Review Prompt
 
@@ -155,7 +152,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - uses: JetBrains/junie-github-action@v0
+      - uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
           use_single_comment: "true"
@@ -263,7 +260,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - uses: JetBrains/junie-github-action@v0
+      - uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
           create_new_branch_for_pr: "true"
@@ -343,7 +340,7 @@ jobs:
           ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 1
 
-      - uses: JetBrains/junie-github-action@v0
+      - uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
           allowed_mcp_servers: "mcp_github_checks_server"
@@ -395,7 +392,7 @@ jobs:
           ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 1
 
-      - uses: JetBrains/junie-github-action@v0
+      - uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
           allowed_mcp_servers: "mcp_github_checks_server"
@@ -481,7 +478,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - uses: JetBrains/junie-github-action@v0
+      - uses: JetBrains/junie-github-action@v1
         id: junie
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
@@ -595,7 +592,7 @@ jobs:
 
       - name: Run Junie
         id: junie
-        uses: JetBrains/junie-github-action@v0
+        uses: JetBrains/junie-github-action@v1
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
           resolve_conflicts: true
