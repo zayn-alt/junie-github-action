@@ -145,7 +145,7 @@ Each recipe includes complete workflows, prompts, and configuration examples you
 |-------|-------------|---------|
 | `prompt` | Custom instructions for Junie. Special values: `code-review` for structured PR reviews, `fix-ci` for CI failure analysis, `minor-fix` for quick PR adjustments. See [Cookbook](COOKBOOK.md) for examples. | - |
 | `junie_version` | Junie CLI version to install | `888.57` |
-| `model` | Model to use for the primary agent. Available: `claude-sonnet-4-6`, `claude-opus-4-6`, `gpt-5-2025-08-07`, `gpt-5.2-codex`, `gpt-5.2-2025-12-11`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `grok-4-1-fast-reasoning`, `claude-opus-4-5-20251101` | - |
+| `model` | Model to use for the primary agent. Available: `sonnet`, `opus`, `gpt`, `gpt-codex`, `gemini-pro`, `gemini-flash`, `grok` | - |
 | `junie_work_dir` | Working directory for Junie files | `/tmp/junie-work` |
 | `junie_guidelines_filename` | Filename of the guidelines file (should be in `<project-root>/.junie` dir) | `guidelines.md` |
 | `allowed_mcp_servers` | Comma-separated list of MCP servers to use (e.g., `mcp_github_checks_server`). Note: inline comment server is automatically enabled for PRs. | - |
@@ -154,7 +154,7 @@ Each recipe includes complete workflows, prompts, and configuration examples you
 
 ```markdown
 @junie-agent fix the bug
-junie-args: --model=claude-opus-4-5
+junie-args: --model=opus
 ```
 
 **Available MCP Servers**:
@@ -167,7 +167,7 @@ junie-args: --model=claude-opus-4-5
   with:
     junie_api_key: ${{ secrets.JUNIE_API_KEY }}
     allowed_mcp_servers: "mcp_github_checks_server"
-    model: "claude-opus-4-5-20251101"  # Optional: specify which model to use
+    model: "opus"  # Optional: specify which model to use
 ```
 
 **Note**: The `mcp_github_inline_comment_server` is automatically enabled for `pull_request` events - no manual configuration needed.
