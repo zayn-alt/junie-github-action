@@ -1,4 +1,4 @@
-name: "Official Junie GitHub Action (BETA)"
+name: "Official Junie GitHub Action"
 description: "Powerful GitHub automation with Junie."
 branding:
   icon: "cpu"
