@@ -396,7 +396,7 @@ describe("prepareJunieTask", () => {
             expect(result.task).toContain("<repository>");
         });
 
-        test("should create codeReview task when code-review prompt is provided", async () => {
+        test("should create codeReviewTask when code-review prompt is provided", async () => {
             const context = createMockContext({
                 eventName: "pull_request",
                 isPR: true,
@@ -422,10 +422,17 @@ describe("prepareJunieTask", () => {
 
             expect(result).toBeDefined();
             expect(result.codeReviewTask).toBeDefined();
-            expect(result.codeReviewTask?.diffCommand).toContain("git diff origin/main...");
+            expect(result.codeReviewTask?.diffCommand).toContain("gh pr diff 123");
+            expect(result.codeReviewTask?.description).toContain("<pull_request_info>");
+            // Header should NOT contain "Your task is to:"
+            expect(result.codeReviewTask?.description).toContain("You were triggered as a GitHub AI Assistant by pull_request action.");
+            expect(result.codeReviewTask?.description).not.toContain("Your task is to:");
+            // Keyword should be present but NOT wrapped in user_instruction tags
+            expect(result.codeReviewTask?.description).toContain("code-review");
+            expect(result.codeReviewTask?.description).not.toContain("<user_instruction>");
         });
 
-        test("should trigger code review prompt from comment when inputs.prompt is empty", async () => {
+        test("should trigger codeReviewTask from comment when inputs.prompt is empty and code-review keyword is used", async () => {
             const context = createMockContext({
                 eventName: "pull_request_review",
                 eventAction: "submitted",  // Important: eventAction must be "submitted" or "edited"
@@ -459,8 +466,15 @@ describe("prepareJunieTask", () => {
 
             expect(result).toBeDefined();
             expect(result.codeReviewTask).toBeDefined();
-            // Should detect code-review trigger from comment and create codeReview task
-            expect(result.codeReviewTask?.diffCommand).toContain("git diff origin/main...");
+            // Should detect code-review trigger from comment and create codeReviewTask
+            expect(result.codeReviewTask?.diffCommand).toContain("gh pr diff 123");
+            expect(result.codeReviewTask?.description).toContain("<pull_request_info>");
+            // Header should NOT contain "Your task is to:"
+            expect(result.codeReviewTask?.description).toContain("You were triggered as a GitHub AI Assistant by pull_request_review action.");
+            expect(result.codeReviewTask?.description).not.toContain("Your task is to:");
+            // Keyword should be present but NOT wrapped in user_instruction tags
+            expect(result.codeReviewTask?.description).toContain("Please do code-review for this PR");
+            expect(result.codeReviewTask?.description).not.toContain("<user_instruction>");
         });
 
         test("should not trigger fix CI prompt when workflow_run event has success conclusion", async () => {

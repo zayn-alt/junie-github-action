@@ -982,4 +982,95 @@ junie-args: --model="gpt-4" --timeout=30 --model="claude-opus-4-5"`,
             expect(resultWithCustom.prompt).toContain("Do NOT commit or push changes");
         });
     });
+    describe("Keyword Context Handling", () => {
+        test("should include GitHub context for fix-ci even if attachGithubContextToCustomPrompt is false", async () => {
+            const context = createMockContext({
+                inputs: {
+                    ...createMockContext().inputs,
+                    prompt: "fix-ci",
+                    attachGithubContextToCustomPrompt: false
+                }
+            });
+            const fetchedData: FetchedData = {
+                pullRequest: createMockPR()
+            };
+
+            const result = await formatter.generatePrompt(context, fetchedData, createMockBranchInfo());
+
+            // Context should be present
+            expect(result.prompt).toContain("<pull_request_info>");
+            expect(result.prompt).toContain("Title: Test PR");
+            expect(result.prompt).toContain("<repository>");
+            
+            // Command prompt should be present
+            expect(result.prompt).toContain("Your task is to analyze CI failures and fix them");
+        });
+
+        test("should include GitHub context for code-review even if attachGithubContextToCustomPrompt is false", async () => {
+            const context = createMockContext({
+                inputs: {
+                    ...createMockContext().inputs,
+                    prompt: "code-review",
+                    attachGithubContextToCustomPrompt: false
+                }
+            });
+            const fetchedData: FetchedData = {
+                pullRequest: createMockPR()
+            };
+
+            const result = await formatter.generatePrompt(context, fetchedData, createMockBranchInfo());
+
+            // Context should be present
+            expect(result.prompt).toContain("<pull_request_info>");
+            expect(result.prompt).toContain("Title: Test PR");
+            
+            // Code review prompt should be present (standard header + keyword for now)
+            // Header should NOT contain "Your task is to:"
+            expect(result.prompt).toContain("You were triggered as a GitHub AI Assistant by pull_request action.");
+            expect(result.prompt).not.toContain("Your task is to:");
+            // Keyword should be present but NOT wrapped in user_instruction tags
+            expect(result.prompt).toContain("code-review");
+            expect(result.prompt).not.toContain("<user_instruction>");
+        });
+
+        test("should NOT include GitHub context for generic custom prompt if attachGithubContextToCustomPrompt is false", async () => {
+            const context = createMockContext({
+                inputs: {
+                    ...createMockContext().inputs,
+                    prompt: "Please refactor this file",
+                    attachGithubContextToCustomPrompt: false
+                }
+            });
+            const fetchedData: FetchedData = {
+                pullRequest: createMockPR()
+            };
+
+            const result = await formatter.generatePrompt(context, fetchedData, createMockBranchInfo());
+
+            // Context should NOT be present
+            expect(result.prompt).not.toContain("<pull_request_info>");
+            expect(result.prompt).not.toContain("<repository>");
+            
+            // Custom prompt should be present
+            expect(result.prompt).toContain("Please refactor this file");
+        });
+
+        test("should extract args from input prompt even when keyword is used", async () => {
+            const context = createMockContext({
+                inputs: {
+                    ...createMockContext().inputs,
+                    prompt: "fix-ci --model=gpt-4",
+                    attachGithubContextToCustomPrompt: true
+                }
+            });
+            const fetchedData: FetchedData = {
+                pullRequest: createMockPR()
+            };
+
+            const result = await formatter.generatePrompt(context, fetchedData, createMockBranchInfo());
+
+            expect(result.customJunieArgs).toContain("--model=gpt-4");
+            expect(result.prompt).toContain("Your task is to analyze CI failures and fix them");
+        });
+    });
 });
