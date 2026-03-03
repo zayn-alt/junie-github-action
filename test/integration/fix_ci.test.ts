@@ -10,7 +10,7 @@ describe("Fix Failing CI: built-in", () => {
         repoName = await testClient.createTestRepo();
         await testClient.setupWorkflow(repoName, ".github/workflows/fix-ci.yml", "test/workflows/fix-ci.yml");
         await testClient.setupWorkflow(repoName, ".github/workflows/ci.yml", "test/workflows/failing-ci.yml");
-    }, 18000);
+    }, 24000);
 
     afterAll(async () => {
         if (repoName && testPassed) {
@@ -21,8 +21,7 @@ describe("Fix Failing CI: built-in", () => {
     });
 
     test("Built-in Fix CI analysis", async () => {
-        await testFixCi(repoName, async () => {
-        })
+        await testFixCi(repoName)
         testPassed = true;
     }, 900000);
 });
@@ -38,7 +37,7 @@ describe("Fix Failing CI: via comment", () => {
             "use_single_comment: true",
             "use_single_comment: true\n          create_new_branch_for_pr: \"true\""
         ));
-    }, 18000);
+    }, 24000);
 
     afterAll(async () => {
         if (repoName && testPassed) {
@@ -57,7 +56,7 @@ describe("Fix Failing CI: via comment", () => {
     }, 900000);
 });
 
-async function testFixCi(repoName: string, fixCiInComment: (prNumber: number) => Promise<void>) {
+async function testFixCi(repoName: string, fixCiInComment: (prNumber: number) => Promise<void> = async () => {}) {
     const branchName = "feature/failing-ci";
     const {data: mainBranch} = await testClient.getBranch(repoName);
     await testClient.createRef(repoName, branchName, mainBranch.commit.sha);
