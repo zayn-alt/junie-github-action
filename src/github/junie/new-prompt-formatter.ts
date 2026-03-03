@@ -17,10 +17,12 @@ import {
     isPullRequestReviewEvent,
     isPushEvent,
     isTriggeredByUserInteraction,
+    isYouTrackWorkflowDispatchEvent,
     JiraIssuePayload,
-    JunieExecutionContext
+    JunieExecutionContext,
+    YouTrackIssuePayload,
 } from "../context";
-import {downloadJiraAttachmentsAndRewriteText} from "./attachment-downloader";
+import {downloadJiraAttachmentsAndRewriteText, downloadYouTrackAttachments} from "./attachment-downloader";
 import {sanitizeContent} from "../../utils/sanitizer";
 import {
     createFixCIFailuresPrompt,
@@ -83,6 +85,16 @@ export class NewGitHubPromptFormatter {
             return {
                 prompt: sanitizeContent(parsed.cleanedText),
                 customJunieArgs: parsed.args
+            };
+        }
+
+        // 3. Handle YouTrack issue integration
+        if (isYouTrackWorkflowDispatchEvent(context)) {
+            const youtrackPrompt = await this.generateYouTrackPrompt(context);
+            const parsed = extractJunieArgs(youtrackPrompt);
+            return {
+                prompt: sanitizeContent(parsed.cleanedText),
+                customJunieArgs: parsed.args,
             };
         }
 
@@ -200,6 +212,35 @@ Description: ${jira.issueDescription}${commentsInfo}
 
         // Download all attachments referenced in text (single pass), then return
         return await downloadJiraAttachmentsAndRewriteText(promptText, jira.attachments);
+    }
+
+    private async generateYouTrackPrompt(context: JunieExecutionContext): Promise<string> {
+        const yt = context.payload as YouTrackIssuePayload;
+
+        const commentsSection = yt.issueComments
+            ? `\n\nComments:\n${yt.issueComments}`
+            : '';
+
+        let promptText = `You were triggered as a GitHub AI Assistant by a YouTrack issue. Your task is to implement the requested feature or fix based on the YouTrack issue details below.
+
+<youtrack_issue>
+Issue ID: ${yt.issueId}
+URL: ${yt.issueUrl}
+Summary: ${yt.issueTitle}
+
+Description: ${yt.issueDescription}${commentsSection}
+</youtrack_issue>
+`;
+
+        // Download attachments and list their local paths in the prompt
+        if (yt.attachments.length > 0) {
+            const localPaths = await downloadYouTrackAttachments(yt.attachments, yt.youtrackBaseUrl);
+            if (localPaths.length > 0) {
+                promptText += `\nAttachments:\n${localPaths.join('\n')}\n`;
+            }
+        }
+
+        return promptText;
     }
 
     private getUserInstruction(context: JunieExecutionContext, fetchedData: FetchedData, customPrompt?: string): string | undefined {

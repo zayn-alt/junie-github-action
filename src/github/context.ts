@@ -22,7 +22,8 @@ import {
     FIX_CI_ACTION,
     JIRA_EVENT_ACTION, JUNIE_AGENT,
     MINOR_FIX_ACTION,
-    RESOLVE_CONFLICTS_ACTION
+    RESOLVE_CONFLICTS_ACTION,
+    YOUTRACK_EVENT_ACTION,
 } from "../constants/github";
 import {isReviewOrCommentHasCodeReviewTrigger, isReviewOrCommentHasFixCITrigger, isReviewOrCommentHasMinorFixTrigger} from "./validation/trigger";
 
@@ -47,6 +48,24 @@ export type JiraIssuePayload = WorkflowDispatchEvent & {
     comments: JiraComment[];
     attachments: JiraAttachment[];
     action: typeof JIRA_EVENT_ACTION;
+};
+
+// YouTrack integration types
+export type YouTrackAttachment = {
+    url: string;
+    filename?: string;
+    mimeType?: string;
+};
+
+export type YouTrackIssuePayload = WorkflowDispatchEvent & {
+    issueId: string;
+    issueUrl: string;
+    issueTitle: string;
+    issueDescription: string;
+    issueComments: string;
+    attachments: YouTrackAttachment[];
+    youtrackBaseUrl: string;
+    action: typeof YOUTRACK_EVENT_ACTION;
 };
 
 // Jira integration types
@@ -133,6 +152,7 @@ export type AutomationEventContext = JunieWorkflowContext & {
         | ScheduleEvent
         | WorkflowRunEvent
         | JiraIssuePayload
+        | YouTrackIssuePayload
         | ResolveConflictsEventPayload;
 };
 
@@ -271,6 +291,12 @@ export function extractJunieWorkflowContext(tokenOwner: TokenOwner): JunieExecut
             // Handle Jira integration event
             if (payload.inputs?.action == JIRA_EVENT_ACTION) {
                 parsedContext = extractJiraEventData(payload, commonFields)
+                break;
+            }
+
+            // Handle YouTrack integration event
+            if (payload.inputs?.action == YOUTRACK_EVENT_ACTION) {
+                parsedContext = extractYouTrackEventData(payload, commonFields);
                 break;
             }
 
@@ -420,6 +446,59 @@ export function isJiraWorkflowDispatchEvent(context: JunieExecutionContext): con
     payload: JiraIssuePayload
 } {
     return context.eventName === "workflow_dispatch" && 'action' in context.payload && context.payload.action === JIRA_EVENT_ACTION;
+}
+
+function extractYouTrackEventData(workflowPayload: WorkflowDispatchEvent, context: JunieWorkflowContext): JunieExecutionContext {
+    const issueId = workflowPayload.inputs?.issue_id as string;
+    const issueUrl = workflowPayload.inputs?.issue_url as string;
+    const issueTitle = workflowPayload.inputs?.issue_title as string;
+    const issueDescription = (workflowPayload.inputs?.issue_description as string) || '';
+    const issueComments = (workflowPayload.inputs?.issue_comments as string) || '';
+    const youtrackBaseUrl = workflowPayload.inputs?.youtrack_base_url as string;
+
+    if (!issueId || !issueTitle || !youtrackBaseUrl) {
+        throw new Error(`Missing YouTrack issue data in workflow payload: ${JSON.stringify(workflowPayload)}`);
+    }
+
+    // Parse attachments JSON array (default to empty array)
+    let attachments: YouTrackAttachment[] = [];
+    if (workflowPayload.inputs?.issue_attachments) {
+        const rawAttachments = workflowPayload.inputs.issue_attachments as string;
+        try {
+            const parsed = JSON.parse(rawAttachments);
+            // Accept both string[] and object[]
+            attachments = (parsed as Array<string | YouTrackAttachment>).map(item =>
+                typeof item === 'string' ? { url: item } : item
+            );
+            console.log(`✓ Parsed ${attachments.length} attachment(s) from YouTrack issue`);
+        } catch (error) {
+            console.warn(`⚠️ Failed to parse YouTrack issue_attachments: ${error}`);
+        }
+    }
+
+    console.log(`✓ YouTrack issue detected: ${issueId} - ${issueTitle}`);
+
+    return {
+        ...context,
+        eventName: "workflow_dispatch",
+        payload: {
+            ...workflowPayload,
+            issueId,
+            issueUrl: issueUrl || '',
+            issueTitle,
+            issueDescription,
+            issueComments,
+            attachments,
+            youtrackBaseUrl,
+            action: YOUTRACK_EVENT_ACTION,
+        },
+    };
+}
+
+export function isYouTrackWorkflowDispatchEvent(context: JunieExecutionContext): context is AutomationEventContext & {
+    payload: YouTrackIssuePayload
+} {
+    return context.eventName === "workflow_dispatch" && 'action' in context.payload && context.payload.action === YOUTRACK_EVENT_ACTION;
 }
 
 export function isResolveConflictsWorkflowDispatchEvent(context: JunieExecutionContext): context is AutomationEventContext & {

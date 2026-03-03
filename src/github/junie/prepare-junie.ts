@@ -4,7 +4,8 @@ import {
     isTriggeredByUserInteraction,
     isPushEvent,
     isJiraWorkflowDispatchEvent,
-    isResolveConflictsWorkflowDispatchEvent, isWorkflowRunFailureEvent, isFixCIEvent
+    isResolveConflictsWorkflowDispatchEvent, isWorkflowRunFailureEvent, isFixCIEvent,
+    isYouTrackWorkflowDispatchEvent,
 } from "../context";
 import {checkHumanActor} from "../validation/actor";
 import {postJunieWorkingStatusComment} from "../operations/comments/feedback";
@@ -17,8 +18,9 @@ import {Octokits} from "../api/client";
 import {prepareJunieTask} from "./junie-tasks";
 import {prepareJunieCLIToken} from "./junie-token";
 import {OUTPUT_VARS} from "../../constants/environment";
-import {RESOLVE_CONFLICTS_ACTION,} from "../../constants/github";
+import {INIT_COMMENT_BODY, RESOLVE_CONFLICTS_ACTION,} from "../../constants/github";
 import {getJiraClient} from "../jira/client";
+import {getYouTrackClient} from "../youtrack/client";
 import {detectJunieTriggerPhrase} from "../validation/trigger";
 
 /**
@@ -53,6 +55,17 @@ export async function initializeJunieExecution({
         } catch (jiraError) {
             console.warn('Failed to start Jira issue:', jiraError);
             // Don't fail the workflow if Jira update fails
+        }
+    }
+
+    // Post "started working" comment for YouTrack-triggered workflows
+    if (isYouTrackWorkflowDispatchEvent(context)) {
+        try {
+            const client = getYouTrackClient(context.payload.youtrackBaseUrl);
+            await client.addComment(context.payload.issueId, INIT_COMMENT_BODY);
+        } catch (ytError) {
+            console.warn('Failed to post starting comment to YouTrack:', ytError);
+            // Don't fail the workflow if YouTrack update fails
         }
     }
 
@@ -113,6 +126,10 @@ async function shouldHandle(context: JunieExecutionContext, octokit: Octokits): 
     }
 
     if (isJiraWorkflowDispatchEvent(context)) {
+        return true;
+    }
+
+    if (isYouTrackWorkflowDispatchEvent(context)) {
         return true;
     }
 

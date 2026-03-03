@@ -7,8 +7,10 @@ import {
     isJiraWorkflowDispatchEvent,
     isPullRequestReviewCommentEvent,
     isPullRequestReviewEvent,
+    isYouTrackWorkflowDispatchEvent,
     JiraIssuePayload,
     JunieExecutionContext,
+    YouTrackIssuePayload,
 } from "../../context";
 import type {Octokit} from "@octokit/rest";
 import {GITHUB_SERVER_URL} from "../../api/config";
@@ -23,6 +25,7 @@ import {
 import type {FailureFeedbackData, FinishFeedbackData, SuccessFeedbackData} from "./types";
 import {getJiraClient} from "../../jira/client";
 import {convertMarkdownToADF} from "../../jira/markdown-to-jira";
+import {getYouTrackClient} from "../../youtrack/client";
 
 /**
  * Adds a thumbs up reaction to the trigger comment/review that started the workflow.
@@ -381,6 +384,18 @@ export async function postJunieCompletionComment(
         return;
     }
 
+    // Check if this is a YouTrack-triggered workflow
+    if (isYouTrackWorkflowDispatchEvent(data.parsedContext)) {
+        console.log('YouTrack workflow detected - posting feedback to YouTrack');
+        try {
+            await postYouTrackFeedback(data);
+        } catch (ytError) {
+            console.warn('Failed to post feedback to YouTrack:', ytError);
+            // Don't fail the workflow if YouTrack update fails
+        }
+        return;
+    }
+
     if (!data.initCommentId) {
         console.log('No initial comment ID - skipping feedback');
         return;
@@ -459,6 +474,34 @@ async function postJiraFeedback(data: FinishFeedbackData): Promise<void> {
         const jiraComment = convertMarkdownToADF(comment);
         await client.addComment(jiraPayload.issueKey, jiraComment);
         console.log(`✓ Successfully updated Jira issue ${jiraPayload.issueKey}`);
+    }
+}
+
+/**
+ * Posts feedback to YouTrack issue instead of GitHub comment
+ */
+async function postYouTrackFeedback(data: FinishFeedbackData): Promise<void> {
+    const ytPayload = data.parsedContext.payload as YouTrackIssuePayload;
+    const client = getYouTrackClient(ytPayload.youtrackBaseUrl);
+    const {owner, name} = data.parsedContext.payload.repository;
+    const ownerLogin = owner.login;
+
+    console.log(`Updating YouTrack issue ${ytPayload.issueId}...`);
+
+    let comment: string;
+
+    if (data.isJobFailed) {
+        console.log(`Add failure comment to YouTrack issue ${ytPayload.issueId}`);
+        comment = getFailedBody(ownerLogin, name, data.parsedContext.runId, data.failureData!);
+    } else {
+        console.log(`Add success comment to YouTrack issue ${ytPayload.issueId}`);
+        const repoFullName = `${ownerLogin}/${name}`;
+        comment = getSuccessBody(repoFullName, data.successData!);
+    }
+
+    if (comment) {
+        await client.addComment(ytPayload.issueId, comment);
+        console.log(`✓ Successfully updated YouTrack issue ${ytPayload.issueId}`);
     }
 }
 
