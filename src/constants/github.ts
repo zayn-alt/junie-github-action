@@ -69,6 +69,7 @@ Your task is to analyze CI failures and fix them. Follow these steps:
    - Make the necessary changes to fix the CI failures.
    - Keep changes minimal and focused on fixing the specific failures.
    - Follow the existing code style and conventions in the repository.
+   - Ensure your fix aligns with the PR's original intent and any decision taken in the PR conversations.   
    - Do NOT make unrelated changes or "improvements" beyond what is needed to fix the CI. 
 
 4. Validation
@@ -112,6 +113,7 @@ ${userRequestSection}
    - Make the requested changes to the codebase.
    - Keep changes minimal and focused on the specific request.
    - Follow the existing code style and conventions in the repository.
+   - Ensure your fix aligns with the PR's original intent and any decision taken in the PR conversations.   
    - Do NOT make unrelated changes or "improvements" beyond what was requested.
 
 3. Validation
