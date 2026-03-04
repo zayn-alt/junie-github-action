@@ -98,7 +98,7 @@ export class NewGitHubPromptFormatter {
 
         // Extract junie-args ONLY from user instruction, not from GitHub context (timeline, reviews, etc.)
         // Only if it's a not a command
-        let userInstruction = !hasCommand ? this.getUserInstruction(context, fetchedData, prompt) : undefined;
+        let userInstruction = this.getUserInstruction(context, fetchedData, prompt);
         if (userInstruction) {
             const parsed = extractJunieArgs(userInstruction);
             userInstruction = parsed.cleanedText;
