@@ -50,10 +50,6 @@ export async function prepareJunieTask(
 
     if (context.inputs.resolveConflicts || isReviewOrCommentHasResolveConflictsTrigger(context)) {
         junieCLITask.mergeTask = {branch: branchInfo.prBaseBranch || branchInfo.baseBranch}
-    } else if (isCodeReviewEvent(context)) {
-        const diffPoint = branchInfo.prBaseBranch || branchInfo.baseBranch;
-        const diffCommand = `git diff origin/${diffPoint}...`;
-        junieCLITask.codeReviewTask = {diffCommand}
     } else {
         const formatter = new NewGitHubPromptFormatter();
         let fetchedData: FetchedData = {};
@@ -82,7 +78,16 @@ export async function prepareJunieTask(
         }
 
         // Note: Attachments are already processed in fetchIssueData/fetchPullRequestData
-        junieCLITask.task = promptText;
+        if (isCodeReviewEvent(context)) {
+            const diffPoint = branchInfo.prBaseBranch || branchInfo.baseBranch;
+            const diffCommand = `git diff origin/${diffPoint}...`;
+            junieCLITask.codeReviewTask = {
+                description: promptText,
+                diffCommand
+            }
+        } else {
+            junieCLITask.task = promptText;
+        }
     }
 
     if (!junieCLITask.task && !junieCLITask.mergeTask && !junieCLITask.codeReviewTask) {
