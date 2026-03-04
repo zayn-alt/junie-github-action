@@ -7,6 +7,7 @@ import {
     GraphQLTimelineItemNode
 } from "../api/queries";
 import {
+    isCodeReviewEvent,
     isFixCIEvent,
     isIssueCommentEvent,
     isIssuesEvent,
@@ -27,6 +28,7 @@ import {
     createMinorFixPrompt,
     GIT_OPERATIONS_NOTE,
     MINOR_FIX_ACTION,
+    CODE_REVIEW_ACTION,
     WORKFLOW_MODIFICATION_NOTE
 } from "../../constants/github";
 import {extractJunieArgs} from "../../utils/junie-args-parser";
@@ -47,7 +49,7 @@ export class NewGitHubPromptFormatter {
         return notes;
     }
 
-    async generatePrompt(context: JunieExecutionContext, fetchedData: FetchedData, branchInfo: BranchInfo, attachGithubContextToCustomPrompt: boolean = true, isDefaultToken: boolean = false): Promise<GeneratePromptResult> {
+    async generatePrompt(context: JunieExecutionContext, fetchedData: FetchedData, branchInfo: BranchInfo, attachGithubContextToCustomPrompt: boolean = context.inputs.attachGithubContextToCustomPrompt, isDefaultToken: boolean = false): Promise<GeneratePromptResult> {
         const result = await this.buildPrompt(context, fetchedData, branchInfo, attachGithubContextToCustomPrompt)
         return {
             prompt: result.prompt + this.getImportantNotes(isDefaultToken),
@@ -59,24 +61,30 @@ export class NewGitHubPromptFormatter {
         let customJunieArgs: string[] = [];
 
         let prompt = context.inputs.prompt || undefined;
+
         // 1. Extract junie-args from user prompt if provided
         if (prompt) {
             const parsed = extractJunieArgs(prompt);
             prompt = parsed.cleanedText;
             customJunieArgs.push(...parsed.args);
         }
-        prompt = this.extractKeyWords(context, fetchedData, branchInfo) || prompt
 
-        // If user provided custom prompt and doesn't want GitHub context, sanitize and return it
-        if (prompt && !attachGithubContextToCustomPrompt) {
+        // 2. Extract a command-specific prompt if a keyword is detected
+        const commandPrompt = this.extractKeyWords(context, branchInfo);
+        const hasCommand = commandPrompt !== undefined;
+        prompt = hasCommand ? commandPrompt : prompt;
+
+        // 3. Early return check: Only skip context if it's a generic custom prompt AND context is disabled
+        // If it's a built-in command (hasCommand is true), we proceed to attach context.
+        if (prompt && !attachGithubContextToCustomPrompt && !hasCommand) {
             const finalPrompt = sanitizeContent(prompt);
             return {
                 prompt: finalPrompt,
-                customJunieArgs
+                customJunieArgs: this.deduplicateArgs(customJunieArgs)
             };
         }
 
-        // 2. Handle Jira issue integration
+        // 4. Handle Jira issue integration
         if (isJiraWorkflowDispatchEvent(context)) {
             const jiraPrompt = await this.generateJiraPrompt(context);
             const parsed = extractJunieArgs(jiraPrompt);
@@ -85,11 +93,11 @@ export class NewGitHubPromptFormatter {
                 customJunieArgs: parsed.args
             };
         }
-
         const repositoryInfo = this.getRepositoryInfo(context);
         const actorInfo = this.getActorInfo(context);
 
         // Extract junie-args ONLY from user instruction, not from GitHub context (timeline, reviews, etc.)
+        // Only if it's a not a command
         let userInstruction = this.getUserInstruction(context, fetchedData, prompt);
         if (userInstruction) {
             const parsed = extractJunieArgs(userInstruction);
@@ -104,7 +112,9 @@ export class NewGitHubPromptFormatter {
         const changedFilesInfo = this.getChangedFilesInfo(fetchedData);
 
         // Build the final prompt
-        const finalPrompt = `You were triggered as a GitHub AI Assistant by ${context.eventName} action. Your task is to:
+        const header = `You were triggered as a GitHub AI Assistant by ${context.eventName} action.${hasCommand ? "" : " Your task is to:"}`;
+
+        const finalPrompt = `${header}
 
 ${userInstruction ? userInstruction : ""}
 ${repositoryInfo ? repositoryInfo : ""}
@@ -124,9 +134,10 @@ ${actorInfo ? actorInfo : ""}
         };
     }
 
-    private extractKeyWords(context: JunieExecutionContext, fetchedData: FetchedData, branchInfo: BranchInfo) {
+    private extractKeyWords(context: JunieExecutionContext, branchInfo: BranchInfo) {
         const isFixCI = isFixCIEvent(context)
         const isMinorFix = isMinorFixEvent(context)
+        const isCodeReview = isCodeReviewEvent(context)
 
         if (isFixCI) {
             const branchName = branchInfo.prBaseBranch || branchInfo.baseBranch;
@@ -139,6 +150,9 @@ ${actorInfo ? actorInfo : ""}
             const userRequest = this.extractMinorFixRequest(context);
             console.log(`Using MINOR-FIX prompt for diffPoint: ${diffPoint}, userRequest: ${userRequest || '(none)'}`);
             return createMinorFixPrompt(diffPoint, userRequest);
+        } else if (isCodeReview) {
+            console.log(`Using CODE-REVIEW keyword detection`);
+            return CODE_REVIEW_ACTION;
         }
     }
 
@@ -225,10 +239,12 @@ Description: ${jira.issueDescription}${commentsInfo}
         }
 
         const instruction = customPrompt || githubUserInstruction;
-        return instruction ? `
+        if (!instruction) return undefined;
+
+        return `
         <user_instruction>
         ${instruction}
-</user_instruction>` : undefined
+</user_instruction>`
     }
 
     /**
