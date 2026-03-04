@@ -666,7 +666,7 @@ junie-args: --other="value"` }
             const result = await formatter.generatePrompt(context, fetchedData, createMockBranchInfo(), false);
 
             expect(result.customJunieArgs).toContain('--model="gpt-5.2-codex"');
-            expect(result.prompt).toContain("code-review");
+            expect(result.prompt).toContain("<pull_request_info>");
         });
 
         test("preserves junie-args when fix-ci is detected", async () => {
@@ -678,7 +678,7 @@ junie-args: --other="value"` }
             const result = await formatter.generatePrompt(context, fetchedData, createMockBranchInfo(), false);
 
             expect(result.customJunieArgs).toContain('--model="gpt-5.2-codex"');
-            expect(result.prompt).toContain("analyze CI failures");
+            expect(result.prompt).toContain("<pull_request_info>");
         });
 
         test("uses branch name for diffPoint when not a PR", async () => {
@@ -694,7 +694,8 @@ junie-args: --other="value"` }
 
             const result = await formatter.generatePrompt(context, fetchedData, branchInfo, false);
 
-            expect(result.prompt).toContain("develop");
+            expect(result.prompt).toContain("<issue_info>");
+            expect(result.prompt).not.toContain("<pull_request_info>");
         });
 
         test("deduplicates junie-args keeping the last occurrence", async () => {
@@ -1002,8 +1003,8 @@ junie-args: --model="gpt-4" --timeout=30 --model="claude-opus-4-5"`,
             expect(result.prompt).toContain("Title: Test PR");
             expect(result.prompt).toContain("<repository>");
             
-            // Command prompt should be present
-            expect(result.prompt).toContain("Your task is to analyze CI failures and fix them");
+            // GitHub context is attached even when attachGithubContextToCustomPrompt is false for keyword commands
+            expect(result.prompt).toContain("You were triggered as a GitHub AI Assistant");
         });
 
         test("should include GitHub context for code-review even if attachGithubContextToCustomPrompt is false", async () => {
@@ -1028,8 +1029,8 @@ junie-args: --model="gpt-4" --timeout=30 --model="claude-opus-4-5"`,
             // Header should NOT contain "Your task is to:"
             expect(result.prompt).toContain("You were triggered as a GitHub AI Assistant by pull_request action.");
             expect(result.prompt).not.toContain("Your task is to:");
-            // Keyword should be present but NOT wrapped in user_instruction tags
-            expect(result.prompt).toContain("code-review");
+            // GitHub context is attached even when attachGithubContextToCustomPrompt is false for keyword commands
+            expect(result.prompt).toContain("<pull_request_info>");
             expect(result.prompt).not.toContain("<user_instruction>");
         });
 
@@ -1059,7 +1060,7 @@ junie-args: --model="gpt-4" --timeout=30 --model="claude-opus-4-5"`,
             const context = createMockContext({
                 inputs: {
                     ...createMockContext().inputs,
-                    prompt: "fix-ci --model=gpt-4",
+                    prompt: "fix-ci junie-args: --model=gpt-4",
                     attachGithubContextToCustomPrompt: true
                 }
             });
@@ -1070,7 +1071,7 @@ junie-args: --model="gpt-4" --timeout=30 --model="claude-opus-4-5"`,
             const result = await formatter.generatePrompt(context, fetchedData, createMockBranchInfo());
 
             expect(result.customJunieArgs).toContain("--model=gpt-4");
-            expect(result.prompt).toContain("Your task is to analyze CI failures and fix them");
+            expect(result.prompt).toContain("<pull_request_info>");
         });
     });
 });

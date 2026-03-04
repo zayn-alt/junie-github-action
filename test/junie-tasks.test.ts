@@ -422,13 +422,12 @@ describe("prepareJunieTask", () => {
 
             expect(result).toBeDefined();
             expect(result.codeReviewTask).toBeDefined();
-            expect(result.codeReviewTask?.diffCommand).toContain("gh pr diff 123");
+            expect(result.codeReviewTask?.diffCommand).toContain("git diff origin/main");
             expect(result.codeReviewTask?.description).toContain("<pull_request_info>");
             // Header should NOT contain "Your task is to:"
             expect(result.codeReviewTask?.description).toContain("You were triggered as a GitHub AI Assistant by pull_request action.");
             expect(result.codeReviewTask?.description).not.toContain("Your task is to:");
-            // Keyword should be present but NOT wrapped in user_instruction tags
-            expect(result.codeReviewTask?.description).toContain("code-review");
+            // Keyword command does not add instruction text to the description
             expect(result.codeReviewTask?.description).not.toContain("<user_instruction>");
         });
 
@@ -467,13 +466,12 @@ describe("prepareJunieTask", () => {
             expect(result).toBeDefined();
             expect(result.codeReviewTask).toBeDefined();
             // Should detect code-review trigger from comment and create codeReviewTask
-            expect(result.codeReviewTask?.diffCommand).toContain("gh pr diff 123");
+            expect(result.codeReviewTask?.diffCommand).toContain("git diff origin/main");
             expect(result.codeReviewTask?.description).toContain("<pull_request_info>");
             // Header should NOT contain "Your task is to:"
             expect(result.codeReviewTask?.description).toContain("You were triggered as a GitHub AI Assistant by pull_request_review action.");
             expect(result.codeReviewTask?.description).not.toContain("Your task is to:");
-            // Keyword should be present but NOT wrapped in user_instruction tags
-            expect(result.codeReviewTask?.description).toContain("Please do code-review for this PR");
+            // Keyword command does not add user instruction text to the description
             expect(result.codeReviewTask?.description).not.toContain("<user_instruction>");
         });
 

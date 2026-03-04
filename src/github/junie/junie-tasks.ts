@@ -79,7 +79,7 @@ export async function prepareJunieTask(
 
         // Note: Attachments are already processed in fetchIssueData/fetchPullRequestData
         if (isCodeReviewEvent(context)) {
-            const diffPoint = context.isPR ? String(context.entityNumber) : branchInfo.prBaseBranch || branchInfo.baseBranch;
+            const diffPoint = branchInfo.prBaseBranch || branchInfo.baseBranch;
             const diffCommand = `git diff origin/${diffPoint}...`;
             junieCLITask.codeReviewTask = {
                 description: promptText,

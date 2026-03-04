@@ -49,7 +49,7 @@ export class NewGitHubPromptFormatter {
         return notes;
     }
 
-    async generatePrompt(context: JunieExecutionContext, fetchedData: FetchedData, branchInfo: BranchInfo, attachGithubContextToCustomPrompt: boolean = true, isDefaultToken: boolean = false): Promise<GeneratePromptResult> {
+    async generatePrompt(context: JunieExecutionContext, fetchedData: FetchedData, branchInfo: BranchInfo, attachGithubContextToCustomPrompt: boolean = context.inputs.attachGithubContextToCustomPrompt, isDefaultToken: boolean = false): Promise<GeneratePromptResult> {
         const result = await this.buildPrompt(context, fetchedData, branchInfo, attachGithubContextToCustomPrompt)
         return {
             prompt: result.prompt + this.getImportantNotes(isDefaultToken),
@@ -70,19 +70,9 @@ export class NewGitHubPromptFormatter {
         }
 
         // 2. Extract a command-specific prompt if a keyword is detected
-        const commandPrompt = this.extractKeyWords(context, fetchedData, branchInfo);
+        const commandPrompt = this.extractKeyWords(context, branchInfo);
         const hasCommand = commandPrompt !== undefined;
-
-        // The command prompt takes precedence over the generic input prompt
-        if (hasCommand) {
-            prompt = commandPrompt;
-            // Also extract args from the command prompt (relevant for minor-fix)
-            if (prompt) {
-                const parsed = extractJunieArgs(prompt);
-                prompt = parsed.cleanedText;
-                customJunieArgs.push(...parsed.args);
-            }
-        }
+        prompt = hasCommand ? commandPrompt : prompt;
 
         // 3. Early return check: Only skip context if it's a generic custom prompt AND context is disabled
         // If it's a built-in command (hasCommand is true), we proceed to attach context.
@@ -103,13 +93,12 @@ export class NewGitHubPromptFormatter {
                 customJunieArgs: parsed.args
             };
         }
-
-        const isCodeReview = isCodeReviewEvent(context);
         const repositoryInfo = this.getRepositoryInfo(context);
         const actorInfo = this.getActorInfo(context);
 
         // Extract junie-args ONLY from user instruction, not from GitHub context (timeline, reviews, etc.)
-        let userInstruction = this.getUserInstruction(context, fetchedData, prompt, isCodeReview);
+        // Only if it's a not a command
+        let userInstruction = !hasCommand ? this.getUserInstruction(context, fetchedData, prompt) : undefined;
         if (userInstruction) {
             const parsed = extractJunieArgs(userInstruction);
             userInstruction = parsed.cleanedText;
@@ -123,9 +112,7 @@ export class NewGitHubPromptFormatter {
         const changedFilesInfo = this.getChangedFilesInfo(fetchedData);
 
         // Build the final prompt
-        const header = isCodeReview
-            ? `You were triggered as a GitHub AI Assistant by ${context.eventName} action.`
-            : `You were triggered as a GitHub AI Assistant by ${context.eventName} action. Your task is to:`;
+        const header = `You were triggered as a GitHub AI Assistant by ${context.eventName} action.${hasCommand ? "" : " Your task is to:"}`;
 
         const finalPrompt = `${header}
 
@@ -147,7 +134,7 @@ ${actorInfo ? actorInfo : ""}
         };
     }
 
-    private extractKeyWords(context: JunieExecutionContext, fetchedData: FetchedData, branchInfo: BranchInfo) {
+    private extractKeyWords(context: JunieExecutionContext, branchInfo: BranchInfo) {
         const isFixCI = isFixCIEvent(context)
         const isMinorFix = isMinorFixEvent(context)
         const isCodeReview = isCodeReviewEvent(context)
@@ -229,7 +216,7 @@ Description: ${jira.issueDescription}${commentsInfo}
         return await downloadJiraAttachmentsAndRewriteText(promptText, jira.attachments);
     }
 
-    private getUserInstruction(context: JunieExecutionContext, fetchedData: FetchedData, customPrompt?: string, isCodeReview: boolean = false): string | undefined {
+    private getUserInstruction(context: JunieExecutionContext, fetchedData: FetchedData, customPrompt?: string): string | undefined {
         let githubUserInstruction
         if (isPullRequestEvent(context)) {
             githubUserInstruction = context.payload.pull_request.body
@@ -253,10 +240,6 @@ Description: ${jira.issueDescription}${commentsInfo}
 
         const instruction = customPrompt || githubUserInstruction;
         if (!instruction) return undefined;
-
-        if (isCodeReview) {
-            return `\n${instruction}\n`;
-        }
 
         return `
         <user_instruction>
