@@ -54,30 +54,24 @@ Your task is to analyze CI failures and fix them. Follow these steps:
 ### Steps to follow
 1. Gather Information
    - Use the 'get_pr_failed_checks_info' tool to retrieve information about failed CI/CD checks.
-   - Read the Pull Request diff by using \`${diffCommand} | grep "^diff --git"\`. Do not write the diff to file.
+   - If NO failed checks were found, stop and submit IMMEDIATELY, reporting that there are no failures for this PR. Do not check anything else.
+   - If failed checks WERE found, read the PR title, description, comments, and conversations. This is important to ensure we align with the PR intent and decisions being made.    
+   - If failed checks WERE found, read the Pull Request diff by using \`${diffCommand} | grep "^diff --git"\`. Do not write the diff to file.   
 
-2. If NO failed checks were found:
-   - Submit ONLY the following message:
-   ---
-   ## ✅ CI Status
-   
-   No failed checks found for this PR. All CI checks have passed or are still running.
-   ---
-
-3. If failed checks WERE found, analyze each failure:
+2. If failed checks WERE found, analyze each failure:
    - Open and explore relevant source files to understand the context
    - Identify the failing step and error message. 
    - Determine the root cause (test failure, build error, linting issue, timeout, flaky test, etc.)
    - Correlate the error with changes in the PR diff. 
    - Determine if the failure is related to the PR diff or a pre-existing issue
 
-4. Implement the Fix
+3. Implement the Fix
    - Make the necessary changes to fix the CI failures.
    - Keep changes minimal and focused on fixing the specific failures.
    - Follow the existing code style and conventions in the repository.
    - Do NOT make unrelated changes or "improvements" beyond what is needed to fix the CI. 
 
-5. Validation
+4. Validation
    - Ensure your changes compile/build successfully.
    - Run relevant tests if applicable.
    - Verify the fix addresses the CI failure. If you are unsure, revert any change made in this session.
