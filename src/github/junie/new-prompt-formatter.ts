@@ -149,7 +149,13 @@ ${actorInfo ? actorInfo : ""}
         const yt = context.payload as YouTrackIssuePayload;
 
         const userInstructionSection = yt.triggerComment
-            ? `\n<user_instruction>\n${yt.triggerComment}\n</user_instruction>\n`
+            ? `Your task is to follow the instruction below: 
+<user_instruction>
+${yt.triggerComment}
+</user_instruction>
+
+Use the information inside <youtrack_issue> only as context. 
+Do not implement or modify anything related to it unless the user_instruction explicitly asks for it.`
             : 'Your task is to implement the requested feature or fix based on the YouTrack issue details below.';
 
         return `You were triggered as a GitHub AI Assistant by a YouTrack issue. 
