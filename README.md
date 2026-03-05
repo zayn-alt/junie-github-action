@@ -1,6 +1,6 @@
 # Junie GitHub Action
 
-A powerful GitHub Action that integrates [Junie](https://www.jetbrains.com/junie/) (JetBrains' AI coding agent) into your GitHub workflows to automate code changes, issue resolution, PR management, and conflict resolution. Junie can understand your codebase, implement fixes, review changes, and respond to developer requests directly in issues and pull requests.
+A powerful GitHub Action that integrates [Junie](https://www.jetbrains.com/junie/) (JetBrains' AI coding agent) into your GitHub workflows to automate code changes, issue resolution, and PR management. Junie can understand your codebase, implement fixes, review changes, and respond to developer requests directly in issues and pull requests.
 
 ## 📑 Table of Contents
 
@@ -25,7 +25,6 @@ A powerful GitHub Action that integrates [Junie](https://www.jetbrains.com/junie
 - **Issue Resolution**: Automatically implements solutions for GitHub issues
 - **PR Management**: Reviews code changes and implements requested modifications
 - **Inline Code Reviews**: Create code review comments with GitHub suggestions directly on PR diffs
-- **Conflict Resolution**: Resolve merge conflicts via `@junie-agent` comment or automatic detection
 - **Minor PR Fixes**: Quickly implement small changes in PRs using `@junie-agent minor-fix [instruction]`
 - **CI Failure Analysis**: Investigates failed checks and suggests fixes using MCP integration
 - **Flexible Triggers**: Activate via mentions, assignees, labels, or custom prompts
@@ -116,7 +115,6 @@ jobs:
 - **Sync Code → Documentation** - Auto-update docs when code changes
 - **Fix Failing CI Tests** - Diagnose and fix test failures automatically
 - **Security Audit for Secrets** - Scan commits for accidentally committed credentials
-- **Automatic Merge Conflict Resolution** - Automatically resolve conflicts when base branch changes
 
 Each recipe includes complete workflows, prompts, and configuration examples you can copy and adapt.
 
@@ -176,7 +174,6 @@ junie-args: --model=opus
 
 | Input | Description | Default |
 |-------|-------------|---------|
-| `resolve_conflicts` | Enable automatic conflict detection (not needed for manual `@junie-agent` resolution) | `false` |
 | `silent_mode` | Run Junie without comments, branch creation, or commits - only prepare data and output results | `false` |
 | `use_single_comment` | Update a single comment for all runs instead of creating new comments each time | `false` |
 | `attach_github_context_to_custom_prompt` | Attach GitHub context (PR/issue info, commits, reviews, etc.) when using custom prompt | `false` |
