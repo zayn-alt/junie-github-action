@@ -48,6 +48,7 @@ export const DEFAULT_TRIGGER_PHRASE = "@junie-agent";
 
 export function createFixCIFailuresPrompt(diffPoint: string): string {
     const diffCommand = `git diff origin/${diffPoint}...`
+    const issueDescriptionSection = `<issue_description>`;
     return `
 Your task is to analyze CI failures and fix them. Follow these steps:
 
@@ -55,7 +56,7 @@ Your task is to analyze CI failures and fix them. Follow these steps:
 1. Gather Information
    - Use the 'get_pr_failed_checks_info' tool to retrieve information about failed CI/CD checks.
    - If NO failed checks were found, stop and submit IMMEDIATELY, reporting that there are no failures for this PR. Do not check anything else.
-   - If failed checks WERE found, review the PR title, description, comments, and conversations. This is important to ensure we align with the PR intent and decisions being made.
+   - If failed checks WERE found, review the PR title, description, comments, and commits in the ${issueDescriptionSection} section below. This is important to ensure we align with the PR intent and decisions being made.
    - If failed checks WERE found, review the Pull Request diff by using \`${diffCommand} | grep "^diff --git"\`. Do not write the diff to file.
 
 2. If failed checks WERE found, analyze each failure:
@@ -94,6 +95,7 @@ IMPORTANT: Do NOT commit or push changes. The system will handle all git operati
 
 export function createMinorFixPrompt(diffPoint: string, userRequest?: string): string {
     const diffCommand = `git diff origin/${diffPoint}...`
+    const issueDescriptionSection = `<issue_description>`;
     const userRequestSection = userRequest 
         ? `\n### User Request\nThe user has specifically requested: "${userRequest}"\nFocus on addressing this request while following all the guidelines below.\n`
         : '';
@@ -106,7 +108,7 @@ Your task is to make a minor fix to this Pull Request based on the user's reques
 ${userRequestSection}
 ### Steps to follow
 1. Gather Information
-   - Review the PR title, description, comments, and conversations. This is important to ensure we align with the PR intent and decisions being made.
+   - Review the PR title, description, comments, and commits in the ${issueDescriptionSection} section below. This is important to ensure we align with the PR intent and decisions being made.
    - Review the Pull Request diff by using \`${diffCommand} | grep "^diff --git"\`. Do not write the diff to file.
    - Understand the context of the changes and what the PR is trying to accomplish.${gatherInfoUserRequestNote}
 
