@@ -459,8 +459,7 @@ async function postJiraFeedback(data: FinishFeedbackData): Promise<void> {
         comment = getFailedBody(ownerLogin, name, data.parsedContext.runId, data.failureData!);
     } else {
         console.log(`Add success comment to Jira issue ${jiraPayload.issueKey}`);
-        const repoFullName = `${ownerLogin}/${name}`;
-        comment = getSuccessBody(repoFullName, data.successData!);
+        comment = data.successData?.junieSummary || '';
 
         // Move to "In Review" if PR was created
         if (data.successData?.actionToDo === 'CREATE_PR' && data.successData.prLink) {
@@ -496,8 +495,7 @@ async function postYouTrackFeedback(data: FinishFeedbackData): Promise<void> {
         comment = getFailedBody(ownerLogin, name, data.parsedContext.runId, data.failureData!);
     } else {
         console.log(`Add success comment to YouTrack issue ${ytPayload.issueId}`);
-        const repoFullName = `${ownerLogin}/${name}`;
-        comment = getSuccessBody(repoFullName, data.successData!);
+        comment = data.successData?.junieSummary || '';
     }
 
     if (comment) {

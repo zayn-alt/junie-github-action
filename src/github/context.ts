@@ -47,6 +47,7 @@ export type JiraIssuePayload = WorkflowDispatchEvent & {
     issueDescription: string;
     comments: JiraComment[];
     attachments: JiraAttachment[];
+    triggerComment?: string;
     action: typeof JIRA_EVENT_ACTION;
 };
 
@@ -62,6 +63,8 @@ export type YouTrackIssuePayload = WorkflowDispatchEvent & {
     issueUrl: string;
     issueTitle: string;
     issueDescription: string;
+    issueComments?: string;
+    attachments: YouTrackAttachment[];
     triggerComment?: string;
     youtrackBaseUrl: string;
     youtrackToken: string;
@@ -401,6 +404,7 @@ function extractJiraEventData(workflowPayload: WorkflowDispatchEvent, context: J
     const issueKey = workflowPayload.inputs?.issue_key as string;
     const issueSummary = workflowPayload.inputs?.issue_summary as string;
     const issueDescription = workflowPayload.inputs?.issue_description as string;
+    const triggerComment = (workflowPayload.inputs?.trigger_comment as string) || undefined;
 
     if (!issueKey || !issueSummary) {
         throw new Error(`Missing Jira issue data in workflow payload: ${JSON.stringify(workflowPayload)}`);
@@ -437,6 +441,7 @@ function extractJiraEventData(workflowPayload: WorkflowDispatchEvent, context: J
             issueDescription: issueDescription || '',
             comments,
             attachments,
+            triggerComment,
             action: JIRA_EVENT_ACTION,
         },
     };
@@ -453,12 +458,28 @@ function extractYouTrackEventData(workflowPayload: WorkflowDispatchEvent, contex
     const issueUrl = workflowPayload.inputs?.issue_url as string;
     const issueTitle = workflowPayload.inputs?.issue_title as string;
     const issueDescription = (workflowPayload.inputs?.issue_description as string) || '';
+    const issueComments = (workflowPayload.inputs?.issue_comments as string) || undefined;
     const triggerComment = (workflowPayload.inputs?.trigger_comment as string) || undefined;
     const youtrackBaseUrl = workflowPayload.inputs?.youtrack_base_url as string;
     const youtrackToken = process.env.YOUTRACK_TOKEN || '';
 
     if (!issueId || !issueTitle || !youtrackBaseUrl) {
         throw new Error(`Missing YouTrack issue data in workflow payload: ${JSON.stringify(workflowPayload)}`);
+    }
+
+    // Parse attachments JSON array (default to empty array)
+    let attachments: YouTrackAttachment[] = [];
+    if (workflowPayload.inputs?.issue_attachments) {
+        const rawAttachments = workflowPayload.inputs.issue_attachments as string;
+        try {
+            const parsed = JSON.parse(rawAttachments);
+            attachments = (parsed as Array<string | YouTrackAttachment>).map(item =>
+                typeof item === 'string' ? { url: item } : item
+            );
+            console.log(`✓ Parsed ${attachments.length} attachment(s) from YouTrack issue`);
+        } catch (error) {
+            console.warn(`⚠️ Failed to parse YouTrack issue_attachments: ${error}`);
+        }
     }
 
     console.log(`✓ YouTrack issue detected: ${issueId} - ${issueTitle}`);
@@ -472,6 +493,8 @@ function extractYouTrackEventData(workflowPayload: WorkflowDispatchEvent, contex
             issueUrl: issueUrl || '',
             issueTitle,
             issueDescription,
+            issueComments,
+            attachments,
             triggerComment,
             youtrackBaseUrl,
             youtrackToken,

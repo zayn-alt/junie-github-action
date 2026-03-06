@@ -1,11 +1,13 @@
 import {writeFile, mkdir} from "fs/promises";
 import {join} from "path";
-import {JiraAttachment} from "../context";
+import {JiraAttachment, YouTrackAttachment} from "../context";
 import {getJiraClient} from "../jira/client";
+import {getYouTrackClient} from "../youtrack/client";
 import mime from "mime-types";
 
 const DOWNLOAD_DIR = "/tmp/github-attachments";
 const JIRA_DOWNLOAD_DIR = "/tmp/jira-attachments";
+const YOUTRACK_DOWNLOAD_DIR = "/tmp/youtrack-attachments";
 
 /**
  * Download file from URL (signed or regular)
@@ -225,6 +227,83 @@ async function downloadJiraAttachment(url: string, filename: string): Promise<st
  * @param attachments - Array of Jira attachments with filename and content URL
  * @returns Text with wiki markup replaced by local file paths
  */
+/**
+ * Pattern for YouTrack markdown attachment refs:
+ * [display text](filename.ext) or ![alt](filename.png){width=70%}
+ */
+const YOUTRACK_ATTACHMENT_PATTERN = /!?\[([^\]]*)\]\(([^)]+)\)(?:\{[^}]*\})?/g;
+
+/**
+ * Downloads YouTrack attachments, replacing inline markdown refs with local paths
+ * and appending unreferenced attachments at the end.
+ *
+ * @param text - Text that may contain markdown attachment references
+ * @param attachments - Array of YouTrack attachments with URL and optional filename
+ * @param youtrackBaseUrl - YouTrack instance base URL
+ * @returns Text with inline refs replaced and unreferenced attachments appended
+ */
+export async function downloadYouTrackAttachments(
+    text: string,
+    attachments: YouTrackAttachment[],
+    youtrackBaseUrl: string
+): Promise<string> {
+    if (attachments.length === 0) {
+        return text;
+    }
+
+    const client = getYouTrackClient(youtrackBaseUrl);
+    await mkdir(YOUTRACK_DOWNLOAD_DIR, {recursive: true});
+
+    let updatedText = text;
+    const referencedUrls = new Set<string>();
+
+    // Replace inline markdown attachment refs with local paths
+    const matches = [...text.matchAll(YOUTRACK_ATTACHMENT_PATTERN)];
+    console.log(`Found ${matches.length} YouTrack attachment refs in text`);
+
+    for (const match of matches) {
+        const fullMatch = match[0];
+        const href = match[2];
+
+        const attachment = attachments.find(att => att.filename === href);
+        if (!attachment) continue;
+
+        try {
+            const buffer = await client.downloadAttachment(attachment.url);
+            const filename = attachment.filename || href;
+            const localPath = join(YOUTRACK_DOWNLOAD_DIR, filename);
+            await writeFile(localPath, buffer);
+            console.log(`✓ Downloaded YouTrack attachment: ${filename} -> ${localPath}`);
+            updatedText = updatedText.replace(fullMatch, localPath);
+            referencedUrls.add(attachment.url);
+        } catch (error) {
+            console.warn(`Could not download YouTrack attachment ${attachment.url}: ${error instanceof Error ? error.message : error}`);
+        }
+    }
+
+    // Download unreferenced attachments and append
+    const unreferencedPaths: string[] = [];
+    for (const attachment of attachments) {
+        if (referencedUrls.has(attachment.url)) continue;
+        try {
+            const buffer = await client.downloadAttachment(attachment.url);
+            const filename = attachment.filename || attachment.url.split('/').pop() || `attachment-${Date.now()}`;
+            const localPath = join(YOUTRACK_DOWNLOAD_DIR, filename);
+            await writeFile(localPath, buffer);
+            console.log(`✓ Downloaded YouTrack attachment: ${filename} -> ${localPath}`);
+            unreferencedPaths.push(localPath);
+        } catch (error) {
+            console.warn(`Could not download YouTrack attachment ${attachment.url}: ${error instanceof Error ? error.message : error}`);
+        }
+    }
+
+    if (unreferencedPaths.length > 0) {
+        updatedText += `\nAttachments:\n${unreferencedPaths.join('\n')}\n`;
+    }
+
+    return updatedText;
+}
+
 export async function downloadJiraAttachmentsAndRewriteText(
     text: string,
     attachments: Array<JiraAttachment>
@@ -234,29 +313,43 @@ export async function downloadJiraAttachmentsAndRewriteText(
     }
 
     let updatedText = text;
+    const referencedFilenames = new Set<string>();
 
     // Find all Jira wiki markup references: !filename.ext! or !filename.ext|params!
     const matches = [...text.matchAll(JIRA_ATTACHMENT_PATTERN)];
 
     for (const match of matches) {
-        const fullMatch = match[0]; // Full match: !filename.jpg|width=100!
-        const filename = match[1];  // Captured filename: filename.jpg
+        const fullMatch = match[0];
+        const filename = match[1];
 
-        // Find the attachment by filename
         const attachment = attachments.find(att => att.filename === filename);
-
         if (attachment) {
             try {
                 const localPath = await downloadJiraAttachment(attachment.content, filename);
-                // Replace the entire wiki markup with just the local path
                 updatedText = updatedText.replace(fullMatch, localPath);
+                referencedFilenames.add(filename);
             } catch (error) {
                 console.error(`Failed to download Jira attachment: ${filename}`, error);
-                // Keep the original markup if download fails
             }
         } else {
             console.warn(`Jira attachment not found: ${filename}`);
         }
+    }
+
+    // Download unreferenced attachments and append
+    const unreferencedPaths: string[] = [];
+    for (const attachment of attachments) {
+        if (referencedFilenames.has(attachment.filename)) continue;
+        try {
+            const localPath = await downloadJiraAttachment(attachment.content, attachment.filename);
+            unreferencedPaths.push(localPath);
+        } catch (error) {
+            console.warn(`Failed to download Jira attachment: ${attachment.filename}`, error);
+        }
+    }
+
+    if (unreferencedPaths.length > 0) {
+        updatedText += `\nAttachments:\n${unreferencedPaths.join('\n')}\n`;
     }
 
     return updatedText;
