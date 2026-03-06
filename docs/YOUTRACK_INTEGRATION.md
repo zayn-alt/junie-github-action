@@ -7,24 +7,37 @@ This integration allows Junie to automatically implement features and fixes base
 The integration uses the [YouTrack Junie App](https://plugins.jetbrains.com/plugin/youtrack-junie-app) (available in JetBrains Marketplace) to dispatch GitHub Actions workflows directly from a YouTrack issue. Once the app is configured, a **Run Junie** button appears on every issue. When clicked, the app sends the issue data to GitHub Actions, and Junie:
 
 1. **Receives the YouTrack issue** details (ID, title, description, and optional trigger comment)
-2. **Implements the changes** based on the issue description (or the trigger comment, if provided)
-3. **Creates a pull request** with the changes
-4. **Adds a comment** to the YouTrack issue with the result (PR link or error details)
+2. **Posts a comment** to the YouTrack issue indicating that work has started
+3. **Fetches attachments** from the issue via the YouTrack API and includes them in context
+4. **Implements the changes** based on the issue description (or the trigger comment, if provided)
+5. **Creates a pull request** with the changes (or commits directly to the branch)
+6. **Updates the initial comment** on the YouTrack issue with the result (PR link or error details)
+
+> **Tip:** If `trigger_comment` is provided (e.g., a comment like `@junie fix the login bug`), Junie treats it as the primary instruction and uses the issue details only as context.
 
 ## Setup
 
-### 1. Create a YouTrack Permanent Token
+### 1. Create a YouTrack User for Junie (Recommended)
 
-1. Open your YouTrack instance and go to your profile settings
-2. Navigate to **Authentication** → **Permanent Tokens**
-3. Click **New token**, give it a name (e.g., "Junie GitHub Integration"), and select the required scopes (at minimum: `YouTrack` → read/write issues and comments)
-4. Copy the generated token
+Creating a dedicated user for Junie allows comments posted by Junie to appear under a recognizable name, and enables `@junie` autocomplete in issue comments.
+
+1. Go to **Administration → Access Management → Users**
+2. Click **New User** and fill in:
+   - **Login**: `junie`
+   - **Full name**: `Junie`
+   - **Email**: any valid address
+3. Grant the user appropriate permissions (at minimum: read issues, create/update comments)
+4. Log in as the new user (or use an admin token to impersonate), go to **Profile → Authentication → Permanent Tokens**
+5. Click **New token**, name it (e.g., "Junie GitHub Integration"), select the `YouTrack` scope with read/write access to issues and comments
+6. Copy the generated token
+
+> If you prefer not to create a dedicated user, you can generate a token from your own profile instead.
 
 ### 2. Add GitHub Secrets
 
 Add the following secret to your GitHub repository:
 
-- `YOUTRACK_TOKEN`: The permanent token you created
+- `YOUTRACK_TOKEN`: The permanent token you created in step 1
 
 ### 3. Create GitHub Workflow
 
@@ -55,6 +68,10 @@ on:
         type: string
       issue_description:
         description: 'YouTrack issue description'
+        required: false
+        type: string
+      issue_comments:
+        description: 'YouTrack issue comments (plain text)'
         required: false
         type: string
       trigger_comment:
@@ -93,7 +110,7 @@ jobs:
 The YouTrack Junie App handles the workflow dispatch automatically — no custom scripting required.
 
 1. Open **YouTrack → Administration → Apps** and find **Junie** in the JetBrains Marketplace, then click **Install**.
-2. In your YouTrack project, go to **Apps -> Junie -> Settings** and enter the GitHub token from step 2.
+2. In your YouTrack project, go to **Apps → Junie → Settings** and enter the GitHub token.
 3. In your YouTrack project, go to **Settings → Version Control** and add a GitHub VCS integration pointing to the target repository.
 
 After setup, a **Run Junie** button will appear on every issue in the project. Clicking it dispatches the `junie-youtrack.yml` workflow with the issue data automatically.

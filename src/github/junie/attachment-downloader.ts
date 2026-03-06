@@ -268,7 +268,7 @@ export async function downloadYouTrackAttachments(
     await mkdir(YOUTRACK_DOWNLOAD_DIR, {recursive: true});
 
     let updatedText = text;
-    const referencedUrls = new Set<string>();
+    const savedPaths = new Map<string, string>(); // url -> localPath
 
     // Replace inline markdown attachment refs with local paths
     const matches = [...text.matchAll(YOUTRACK_ATTACHMENT_PATTERN)];
@@ -280,9 +280,12 @@ export async function downloadYouTrackAttachments(
         if (!attachment) continue;
 
         try {
-            const localPath = await saveYouTrackAttachment(attachment);
+            let localPath = savedPaths.get(attachment.url);
+            if (!localPath) {
+                localPath = await saveYouTrackAttachment(attachment);
+                savedPaths.set(attachment.url, localPath);
+            }
             updatedText = updatedText.replace(fullMatch, localPath);
-            referencedUrls.add(attachment.url);
         } catch (error) {
             console.warn(`Could not save YouTrack attachment ${attachment.name}: ${error instanceof Error ? error.message : error}`);
         }
@@ -291,9 +294,10 @@ export async function downloadYouTrackAttachments(
     // Save unreferenced attachments and append
     const unreferencedPaths: string[] = [];
     for (const attachment of attachments) {
-        if (referencedUrls.has(attachment.url)) continue;
+        if (savedPaths.has(attachment.url)) continue;
         try {
             const localPath = await saveYouTrackAttachment(attachment);
+            savedPaths.set(attachment.url, localPath);
             unreferencedPaths.push(localPath);
         } catch (error) {
             console.warn(`Could not save YouTrack attachment ${attachment.name}: ${error instanceof Error ? error.message : error}`);

@@ -460,9 +460,8 @@ async function postJiraFeedback(data: FinishFeedbackData): Promise<void> {
     } else {
         console.log(`Add success comment to Jira issue ${jiraPayload.issueKey}`);
         comment = data.successData?.junieSummary || '';
-
-        // Move to "In Review" if PR was created
         if (data.successData?.actionToDo === 'CREATE_PR' && data.successData.prLink) {
+            comment = getSuccessBody(`${ownerLogin}/${name}`, data.successData);
             console.log(`Move Jira issue ${jiraPayload.issueKey} to "In Review"`);
             await client.moveIssueToReview(jiraPayload.issueKey);
         }
@@ -495,7 +494,7 @@ async function postYouTrackFeedback(data: FinishFeedbackData): Promise<void> {
         comment = getFailedBody(ownerLogin, name, data.parsedContext.runId, data.failureData!);
     } else {
         console.log(`Add success comment to YouTrack issue ${ytPayload.issueId}`);
-        comment = data.successData?.junieSummary || '';
+        comment = data.successData?.prLink ? getSuccessBody(`${ownerLogin}/${name}`, data.successData) : data.successData?.junieSummary || '';
     }
 
     if (comment) {
