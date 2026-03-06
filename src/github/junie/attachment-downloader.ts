@@ -2,7 +2,6 @@ import {writeFile, mkdir} from "fs/promises";
 import {join} from "path";
 import {JiraAttachment, YouTrackAttachment} from "../context";
 import {getJiraClient} from "../jira/client";
-import {getYouTrackClient} from "../youtrack/client";
 import mime from "mime-types";
 
 const DOWNLOAD_DIR = "/tmp/github-attachments";
@@ -233,25 +232,39 @@ async function downloadJiraAttachment(url: string, filename: string): Promise<st
  */
 const YOUTRACK_ATTACHMENT_PATTERN = /!?\[([^\]]*)\]\(([^)]+)\)(?:\{[^}]*\})?/g;
 
+async function saveYouTrackAttachment(attachment: YouTrackAttachment): Promise<string> {
+    const filename = attachment.name || attachment.url.split('/').pop() || `attachment-${Date.now()}`;
+    const localPath = join(YOUTRACK_DOWNLOAD_DIR, filename);
+
+    if (attachment.base64Content) {
+        await writeFile(localPath, Buffer.from(attachment.base64Content, 'base64'));
+    } else {
+        // Fallback: fetch by URL (shouldn't normally happen since we request base64Content from API)
+        const response = await fetch(attachment.url);
+        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        await writeFile(localPath, Buffer.from(await response.arrayBuffer()));
+    }
+
+    console.log(`✓ Saved YouTrack attachment: ${filename} -> ${localPath}`);
+    return localPath;
+}
+
 /**
- * Downloads YouTrack attachments, replacing inline markdown refs with local paths
+ * Saves YouTrack attachments, replacing inline markdown refs with local paths
  * and appending unreferenced attachments at the end.
  *
  * @param text - Text that may contain markdown attachment references
- * @param attachments - Array of YouTrack attachments with URL and optional filename
- * @param youtrackBaseUrl - YouTrack instance base URL
+ * @param attachments - Array of YouTrack attachments (fetched from API with base64Content)
  * @returns Text with inline refs replaced and unreferenced attachments appended
  */
 export async function downloadYouTrackAttachments(
     text: string,
     attachments: YouTrackAttachment[],
-    youtrackBaseUrl: string
 ): Promise<string> {
     if (attachments.length === 0) {
         return text;
     }
 
-    const client = getYouTrackClient(youtrackBaseUrl);
     await mkdir(YOUTRACK_DOWNLOAD_DIR, {recursive: true});
 
     let updatedText = text;
@@ -259,41 +272,31 @@ export async function downloadYouTrackAttachments(
 
     // Replace inline markdown attachment refs with local paths
     const matches = [...text.matchAll(YOUTRACK_ATTACHMENT_PATTERN)];
-    console.log(`Found ${matches.length} YouTrack attachment refs in text`);
-
     for (const match of matches) {
         const fullMatch = match[0];
         const href = match[2];
 
-        const attachment = attachments.find(att => att.filename === href);
+        const attachment = attachments.find(att => att.name === href);
         if (!attachment) continue;
 
         try {
-            const buffer = await client.downloadAttachment(attachment.url);
-            const filename = attachment.filename || href;
-            const localPath = join(YOUTRACK_DOWNLOAD_DIR, filename);
-            await writeFile(localPath, buffer);
-            console.log(`✓ Downloaded YouTrack attachment: ${filename} -> ${localPath}`);
+            const localPath = await saveYouTrackAttachment(attachment);
             updatedText = updatedText.replace(fullMatch, localPath);
             referencedUrls.add(attachment.url);
         } catch (error) {
-            console.warn(`Could not download YouTrack attachment ${attachment.url}: ${error instanceof Error ? error.message : error}`);
+            console.warn(`Could not save YouTrack attachment ${attachment.name}: ${error instanceof Error ? error.message : error}`);
         }
     }
 
-    // Download unreferenced attachments and append
+    // Save unreferenced attachments and append
     const unreferencedPaths: string[] = [];
     for (const attachment of attachments) {
         if (referencedUrls.has(attachment.url)) continue;
         try {
-            const buffer = await client.downloadAttachment(attachment.url);
-            const filename = attachment.filename || attachment.url.split('/').pop() || `attachment-${Date.now()}`;
-            const localPath = join(YOUTRACK_DOWNLOAD_DIR, filename);
-            await writeFile(localPath, buffer);
-            console.log(`✓ Downloaded YouTrack attachment: ${filename} -> ${localPath}`);
+            const localPath = await saveYouTrackAttachment(attachment);
             unreferencedPaths.push(localPath);
         } catch (error) {
-            console.warn(`Could not download YouTrack attachment ${attachment.url}: ${error instanceof Error ? error.message : error}`);
+            console.warn(`Could not save YouTrack attachment ${attachment.name}: ${error instanceof Error ? error.message : error}`);
         }
     }
 

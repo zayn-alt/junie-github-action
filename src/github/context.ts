@@ -53,9 +53,10 @@ export type JiraIssuePayload = WorkflowDispatchEvent & {
 
 // YouTrack integration types
 export type YouTrackAttachment = {
+    name: string;
     url: string;
-    filename?: string;
     mimeType?: string;
+    base64Content?: string;
 };
 
 export type YouTrackIssuePayload = WorkflowDispatchEvent & {
@@ -64,7 +65,6 @@ export type YouTrackIssuePayload = WorkflowDispatchEvent & {
     issueTitle: string;
     issueDescription: string;
     issueComments?: string;
-    attachments: YouTrackAttachment[];
     triggerComment?: string;
     youtrackBaseUrl: string;
     youtrackToken: string;
@@ -467,21 +467,6 @@ function extractYouTrackEventData(workflowPayload: WorkflowDispatchEvent, contex
         throw new Error(`Missing YouTrack issue data in workflow payload: ${JSON.stringify(workflowPayload)}`);
     }
 
-    // Parse attachments JSON array (default to empty array)
-    let attachments: YouTrackAttachment[] = [];
-    if (workflowPayload.inputs?.issue_attachments) {
-        const rawAttachments = workflowPayload.inputs.issue_attachments as string;
-        try {
-            const parsed = JSON.parse(rawAttachments);
-            attachments = (parsed as Array<string | YouTrackAttachment>).map(item =>
-                typeof item === 'string' ? { url: item } : item
-            );
-            console.log(`✓ Parsed ${attachments.length} attachment(s) from YouTrack issue`);
-        } catch (error) {
-            console.warn(`⚠️ Failed to parse YouTrack issue_attachments: ${error}`);
-        }
-    }
-
     console.log(`✓ YouTrack issue detected: ${issueId} - ${issueTitle}`);
 
     return {
@@ -494,7 +479,6 @@ function extractYouTrackEventData(workflowPayload: WorkflowDispatchEvent, contex
             issueTitle,
             issueDescription,
             issueComments,
-            attachments,
             triggerComment,
             youtrackBaseUrl,
             youtrackToken,

@@ -91,24 +91,29 @@ class YouTrackClient {
     }
 
     /**
-     * Downloads an attachment from YouTrack using Bearer token auth
+     * Fetches all attachments for a YouTrack issue, including base64 content.
      *
-     * @param url - Full URL to the attachment
-     * @returns Buffer containing the file data
+     * @param issueId - YouTrack issue ID (e.g., PROJ-123)
+     * @returns Array of attachments with name, url, mimeType, and base64Content
      */
-    async downloadAttachment(url: string): Promise<Buffer> {
-        console.log(`Downloading YouTrack attachment from ${url}`);
+    async getAttachments(issueId: string): Promise<Array<{ name: string; url: string; mimeType?: string; base64Content?: string }>> {
+        try {
+            console.log(`Fetching attachments for YouTrack issue ${issueId}`);
 
-        const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${this.token}` },
-        });
+            const url = `${this.baseUrl}/api/issues/${issueId}/attachments?fields=name,url,mimeType,base64Content`;
+            const response = await fetch(url, { headers: this.authHeaders });
 
-        if (!response.ok) {
-            throw new Error(`Failed to download attachment from ${url}: ${response.status} ${response.statusText}`);
+            if (!response.ok) {
+                throw new Error(`${response.status} ${response.statusText}`);
+            }
+
+            const attachments = await response.json() as Array<{ name: string; url: string; mimeType?: string; base64Content?: string }>;
+            console.log(`✓ Fetched ${attachments.length} attachment(s) for YouTrack issue ${issueId}`);
+            return attachments;
+        } catch (error) {
+            console.error(`Error fetching attachments for YouTrack issue ${issueId}:`, error);
+            return [];
         }
-
-        const arrayBuffer = await response.arrayBuffer();
-        return Buffer.from(arrayBuffer);
     }
 }
 

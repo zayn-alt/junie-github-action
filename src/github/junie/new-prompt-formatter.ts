@@ -22,6 +22,7 @@ import {
     JunieExecutionContext, YouTrackIssuePayload
 } from "../context";
 import {downloadJiraAttachmentsAndRewriteText, downloadYouTrackAttachments} from "./attachment-downloader";
+import {getYouTrackClient} from "../youtrack/client";
 import {sanitizeContent} from "../../utils/sanitizer";
 import {
     createFixCIFailuresPrompt,
@@ -173,8 +174,14 @@ Description: ${yt.issueDescription}${commentsSection}
 </youtrack_issue>
 `;
 
-        if (yt.attachments.length > 0) {
-            promptText = await downloadYouTrackAttachments(promptText, yt.attachments, yt.youtrackBaseUrl);
+        try {
+            const client = getYouTrackClient(yt.youtrackBaseUrl);
+            const attachments = await client.getAttachments(yt.issueId);
+            if (attachments.length > 0) {
+                promptText = await downloadYouTrackAttachments(promptText, attachments);
+            }
+        } catch (error) {
+            console.warn(`Failed to fetch YouTrack attachments: ${error instanceof Error ? error.message : error}`);
         }
 
         return promptText;
