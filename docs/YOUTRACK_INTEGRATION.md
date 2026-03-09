@@ -4,9 +4,14 @@ This integration allows Junie to automatically implement features and fixes base
 
 ## How It Works
 
-The integration uses the [YouTrack Junie App](https://plugins.jetbrains.com/plugin/youtrack-junie-app) (available in JetBrains Marketplace) to dispatch GitHub Actions workflows directly from a YouTrack issue. Once the app is configured, a **Run Junie** button appears on every issue. When clicked, the app sends the issue data to GitHub Actions, and Junie:
+The integration uses the [YouTrack Junie App](https://plugins.jetbrains.com/plugin/youtrack-junie-app) (available in JetBrains Marketplace) to dispatch GitHub Actions workflows directly from a YouTrack issue. There are two ways to trigger Junie:
 
-1. **Receives the YouTrack issue** details (ID, title, description, and optional trigger comment)
+- **Widget button:** Click **Run Junie** on the issue page.
+- **Comment mention:** Add a comment containing `@junie`. The app detects it automatically and passes the comment text as `trigger_comment`.
+
+In both cases, the app sends the issue data to GitHub Actions, and Junie:
+
+1. **Receives the YouTrack issue** details (ID, title, description, comments, and optional trigger comment)
 2. **Posts a comment** to the YouTrack issue indicating that work has started
 3. **Fetches attachments** from the issue via the YouTrack API and includes them in context
 4. **Implements the changes** based on the issue description (or the trigger comment, if provided)
