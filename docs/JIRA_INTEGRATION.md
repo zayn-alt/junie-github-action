@@ -7,15 +7,29 @@ This integration allows Junie to automatically implement features and fixes base
 When a Jira issue is created or updated with a specific trigger (e.g., adding a label), Jira automation triggers a GitHub Actions workflow via `workflow_dispatch`. Junie then:
 
 1. **Receives the Jira issue** details (key, summary, description)
-2. **Transitions the issue to "In Progress"** automatically
+2. **Posts a comment** to the Jira issue indicating that work has started
 3. **Implements the changes** based on the issue description
 4. **Creates a pull request** with the changes
-5. **Transitions the issue to "In Review"**
-6. **Adds a comment** to the Jira issue with the PR link
+5. **Updates the initial comment** on the Jira issue with the result (PR link or summary)
 
 ## Setup
 
-### 1. Configure Jira API Access
+### 1. Create a Jira User for Junie (Recommended)
+
+Creating a dedicated user for Junie allows comments posted by Junie to appear under a recognizable name, and enables `@junie` autocomplete in issue comments.
+
+1. Go to **Administration → User Management → Users**
+2. Click **Create user** and fill in:
+   - **Email**: any valid address (e.g., `junie@your-company.com`)
+   - **Full name**: `Junie`
+   - **Username**: `junie`
+3. Grant the user appropriate project permissions (at minimum: browse projects, add comments)
+4. Log in as the new user, go to [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens), and create an API token
+5. Use this user's email and token for the `JIRA_EMAIL` and `JIRA_API_TOKEN` secrets
+
+> If you prefer not to create a dedicated user, generate an API token from your own Atlassian account instead.
+
+### 2. Configure Jira API Access
 
 Create a Jira API token:
 
@@ -24,31 +38,13 @@ Create a Jira API token:
 3. Give it a name (e.g., "Junie GitHub Integration")
 4. Copy the generated token
 
-### 2. Add GitHub Secrets
+### 3. Add GitHub Secrets
 
 Add the following secrets to your GitHub repository:
 
 - `JIRA_EMAIL`: Your Jira account email
 - `JIRA_API_TOKEN`: The API token you created
 - `JIRA_BASE_URL`: Your Jira instance URL (e.g., `https://your-company.atlassian.net`)
-
-### 3. Configure Jira Transition IDs (Optional)
-
-By default, the integration uses these transition IDs:
-- **In Progress**: `21`
-- **In Review**: `31`
-
-These IDs may vary depending on your Jira workflow. To find your transition IDs:
-
-```bash
-curl -u EMAIL:API_TOKEN \
-  "https://your-company.atlassian.net/rest/api/3/issue/YOUR-ISSUE-KEY/transitions" \
-  | jq '.transitions[] | {id, name}'
-```
-
-Add custom transition IDs as GitHub secrets if needed:
-- `JIRA_TRANSITION_IN_PROGRESS`
-- `JIRA_TRANSITION_IN_REVIEW`
 
 ### 4. Create GitHub Workflow
 
@@ -83,6 +79,10 @@ on:
       issue_attachments:
         description: 'Jira issue attachments'
         required: false
+      trigger_comment:
+        description: 'Comment that triggered Junie (used as user instruction)'
+        required: false
+        type: string
 
 jobs:
   junie:
@@ -107,14 +107,13 @@ jobs:
           jira_base_url: ${{ secrets.JIRA_BASE_URL }}
           jira_email: ${{ secrets.JIRA_EMAIL }}
           jira_api_token: ${{ secrets.JIRA_API_TOKEN }}
-#          optional
-#          jira_transition_in_progress: your value
-#          jira_transition_in_review: your value
 ```
 
 ### 5. Configure Jira Automation
 
-In Jira, create an automation rule:
+Create two automation rules in Jira — one triggered by a label, one triggered by an `@junie` comment.
+
+#### Rule 1: Label Trigger
 
 1. **Trigger**: Issue created/updated, or Label added (e.g., "junie-agent")
 2. **Action**: Send web request
@@ -142,6 +141,33 @@ In Jira, create an automation rule:
     }
   }
   ```
+
+#### Rule 2: Comment Trigger (`@junie`)
+
+This rule lets you tag Junie in any issue comment to ask it to perform a specific task.
+
+1. **Trigger**: Work item commented
+2. **Comment type**: Comment is the main action
+3. **Condition**: `{{comment.body}}` contains `@junie`
+4. **Action**: Send web request (same URL and headers as Rule 1)
+
+**Body** (Custom data):
+```json
+{
+  "ref": "main",
+  "inputs": {
+    "action": "jira_event",
+    "issue_key": "{{issue.key}}",
+    "issue_summary": "{{issue.summary.jsonEncode}}",
+    "issue_description": "{{issue.description.jsonEncode}}",
+    "issue_comments": "[{{#issue.comments}}{\"author\":\"{{author.displayName.jsonEncode}}\",\"body\":\"{{body.jsonEncode}}\",\"created\":\"{{created}}\"}{{^last}},{{/}}{{/}}]",
+    "issue_attachments": "[{{#attachment}}{\"filename\":\"{{filename.jsonEncode}}\",\"mimeType\":\"{{mimeType}}\",\"size\":{{size}},\"content\":\"{{content}}\"}{{^last}},{{/}}{{/}}]",
+    "trigger_comment": "{{comment.body.jsonEncode}}"
+  }
+}
+```
+
+When `trigger_comment` is provided, Junie treats it as the primary instruction and uses the issue details as context only.
 
 ### Comments and Attachments Support
 

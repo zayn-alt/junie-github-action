@@ -1,5 +1,5 @@
 import {describe, test, expect} from "bun:test";
-import {convertMarkdownToADF} from "./markdown-to-jira";
+import {convertMarkdownToADF} from "../src/github/jira/markdown-to-jira";
 
 describe("convertMarkdownToADF", () => {
     test("returns valid ADF document structure", () => {
