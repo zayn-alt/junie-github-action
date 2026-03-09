@@ -72,7 +72,7 @@ class JiraClient {
             await this.client.issueComments.updateComment({
                 issueIdOrKey: issueKey,
                 id: commentId,
-                comment: adfDocument,
+                body: adfDocument,
             });
 
             console.log(`✓ Successfully updated comment ${commentId} on Jira issue ${issueKey}`);
