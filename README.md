@@ -15,6 +15,7 @@ A powerful GitHub Action that integrates [Junie](https://www.jetbrains.com/junie
   - [Outputs](#outputs)
   - [Required Permissions](#required-permissions)
   - [GitHub Token Considerations](#github-token-considerations)
+  - [BYOK Authentication](#byok-authentication)
 - [How It Works](#how-it-works)
 - [Security Considerations](#security-considerations)
 - [Troubleshooting](#troubleshooting)
@@ -42,7 +43,9 @@ A powerful GitHub Action that integrates [Junie](https://www.jetbrains.com/junie
 
 ### Prerequisites
 
-1. **Junie API Key**: Obtain from [JetBrains Junie](https://junie.jetbrains.com/)
+1. **Authentication** — one of the following:
+   - **Junie API Key**: Obtain from [JetBrains Junie](https://junie.jetbrains.com/) and store as `JUNIE_API_KEY`
+   - **BYOK (Bring Your Own Key)**: Use your own AI provider key instead — see [BYOK Authentication](#byok-authentication) for details
 2. **Repository Permissions**: Admin access to configure secrets and workflows
 
 ### Basic Setup
@@ -194,8 +197,33 @@ For detailed setup instructions, see the [Jira Integration Guide](docs/JIRA_INTE
 
 | Input | Description | Required |
 |-------|-------------|----------|
-| `junie_api_key` | JetBrains Junie API key | Yes |
+| `junie_api_key` | JetBrains Junie API key | One of `junie_api_key` or a BYOK key is required |
+| `openai_api_key` | OpenAI API key (BYOK) | One of `junie_api_key` or a BYOK key is required |
+| `anthropic_api_key` | Anthropic API key (BYOK) | One of `junie_api_key` or a BYOK key is required |
+| `grok_api_key` | Grok API key (BYOK) | One of `junie_api_key` or a BYOK key is required |
+| `openrouter_api_key` | OpenRouter API key (BYOK) | One of `junie_api_key` or a BYOK key is required |
+| `google_api_key` | Google API key (BYOK) | One of `junie_api_key` or a BYOK key is required |
 | `custom_github_token` | Custom GitHub token (optional) | No |
+
+##### BYOK Authentication
+
+Instead of a Junie API key, you can use your own AI provider key. This lets you bring your existing API subscription from OpenAI, Anthropic, Google, Grok, or OpenRouter.
+
+**Example — using an Anthropic key:**
+```yaml
+- uses: JetBrains/junie-github-action@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+**Example — using an OpenAI key:**
+```yaml
+- uses: JetBrains/junie-github-action@v1
+  with:
+    openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+```
+
+> **Note:** Provide either `junie_api_key` **or** one of the BYOK keys — not both. All API keys are automatically masked in workflow logs.
 
 ### Outputs
 
@@ -401,7 +429,7 @@ jobs:
 
 ### Junie Fails to Execute
 
-- Verify `JUNIE_API_KEY` secret is set correctly
+- Verify that either `junie_api_key` or a BYOK key (`openai_api_key`, `anthropic_api_key`, `grok_api_key`, `openrouter_api_key`, `google_api_key`) is set correctly in your repository secrets
 - Check Junie version compatibility (`junie_version` input)
 - Review uploaded artifacts for Junie working directory logs
 - Ensure runner has internet access for API calls
