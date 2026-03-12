@@ -118,6 +118,7 @@ The YouTrack Junie App handles the workflow dispatch automatically — no custom
 2. In your YouTrack project, go to **Apps → Junie → Settings** and configure:
    - **GitHub Token** (required): the personal access token with `workflow` permission.
    - **Trigger Name** (optional): the phrase that triggers Junie when a comment starts with it. Defaults to `@junie`. Change it to e.g. `/junie` if you prefer a slash command style.
+   - **Default Branch** (optional): the branch to trigger the workflow on. If not set, the app fetches the repository's default branch via the GitHub API. Falls back to `main` if it cannot be determined.
 3. In your YouTrack project, go to **Settings → Version Control** and add a GitHub VCS integration pointing to the target repository.
 
 After setup, a **Run Junie** button will appear on every issue in the project. Clicking it dispatches the `junie-youtrack.yml` workflow with the issue data automatically.
